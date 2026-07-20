@@ -75,7 +75,7 @@ async function generateContentWithRetry(ai: any, params: any, retries = 3, delay
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Set high limits for handling base64 images and documents
   app.use(express.json({ limit: "50mb" }));
@@ -228,7 +228,8 @@ Natively adapt your memory, references, and responses to reflect this shared lor
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    // AMICA_STATIC_PATH is set by Electron at runtime; fallback to local dist/
+    const distPath = process.env.AMICA_STATIC_PATH || path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
