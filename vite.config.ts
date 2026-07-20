@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/AMICA/',
   plugins: [react(), tailwindcss()],
   server: {
     hmr: process.env.DISABLE_HMR !== 'true',

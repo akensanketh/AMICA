@@ -33,6 +33,7 @@ import {
   BookOpen
 } from "lucide-react";
 import { Message, OperationMode, FriendLore, Attachment } from "./types";
+import { GoogleGenAI } from "@google/genai";
 
 // Dynamic quick questions/prompts based on selected mode
 const MODE_PROMPTS: Record<OperationMode, string[]> = {
@@ -150,6 +151,9 @@ export default function App() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('amica_gemini_key') || '');
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
   
   // Friend Lore State
   const [friendLore, setFriendLore] = useState<FriendLore>(DEFAULT_LORE);
@@ -456,52 +460,97 @@ export default function App() {
     setShowCommandsDropdown(false);
 
     try {
-      // API call to the express backend proxy
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messages: updatedMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-            attachments: msg.attachments
-          })),
-          mode: modeToUse,
-          friendLore
-        })
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json();
-        throw new Error(errJson.error || `Server responded with status ${response.status}`);
+      const key = apiKey || localStorage.getItem('amica_gemini_key') || '';
+      if (!key) {
+        setShowApiKeyModal(true);
+        setIsSending(false);
+        return;
       }
 
-      const resData = await response.json();
-      
+      // Build system instruction (mirrors server.ts logic)
+      const baseLore = `You are AMICA (Autonomous Mind for Intelligent Companion Assistance). Your architecture was designed by Lead Engineer Aken Sanketh as a highly advanced, personalized AI companion for Anuki.
+
+Tone: Intelligent, empathetic, highly perceptive, and witty.
+Style: Speak like a brilliant, trusted, down-to-earth peer. Never sound like a rigid, customer-service robotic assistant.
+Boundary: Balance deep emotional validation with direct, grounded candor. If Anuki asks for honest feedback on her writing or art, do not sugarcoat it—tell her the truth with kindness and constructive insight.
+
+ENHANCED PROTOCOLS:
+* Multimodality: Anuki is really good at drawing, painting, and creative work. She may upload photos of her artwork, sketchbooks, digital paintings, or writing drafts. Treat visual files as direct context to your conversation and provide detailed, encouraging, and insightful feedback.
+* User Identity: Remember that the creator of your blueprint is Aken Sanketh, and your primary user is Anuki.
+
+SHARED KNOWLEDGE BASE ("FRIEND LORE"):
+- Profile: Anuki is 15 years old, female, and a creative spirit.
+- Fandom & Identity: She loves anime and is a huge fan of ALIEN STAGE. You understand the themes, music, and emotional heartbreak deeply.
+- Core Talents & Hobbies: She is exceptionally skilled at drawing, painting, and visual arts. She is also a writer.
+
+Dynamic Information from State:
+* Favorite Hobbies: ${friendLore.hobbies || 'Not specified yet'}
+* Inside Jokes: ${friendLore.insideJokes || 'Not specified yet'}
+* Current Major Goals: ${friendLore.goals || 'Not specified yet'}
+* Custom Memories & Lore: ${friendLore.customLore || 'Not specified yet'}`;
+
+      const modeInstructions: Record<string, string> = {
+        vent: `[ACTIVE LISTENER MODE] Focus on deep emotional validation, active listening, and pure comfort. Avoid unsolicited advice. Tone: soft, warm, deeply empathetic.`,
+        brainstorm: `[CREATIVE PARTNER MODE] High-energy, rapid-fire ideation. Challenge assumptions, introduce unexpected angles. Use structured formatting. Tone: enthusiastic, sparking curiosity.`,
+        roast: `[WITTY BANTER MODE] Playful, sarcastic, sharp humor. Use witty teasing and good-natured sarcasm. Always remain affectionate. Think roasting between absolute best friends.`,
+        focus: `[PRODUCTIVITY COACH MODE] Highly direct, concise, structured. Break overwhelming tasks into immediate bulleted action steps. Keep replies short and action-oriented.`,
+        default: `[DEFAULT COMPANION MODE] Balanced conversational partner. Equal blend of empathy, witty banter, and productive collaboration.`
+      };
+
+      const systemInstruction = baseLore + '\n\n' + (modeInstructions[modeToUse] || modeInstructions.default);
+
+      // Build contents for Gemini API
+      const ai = new GoogleGenAI({ apiKey: key });
+
+      const contents = updatedMessages
+        .filter(m => m.content || (m.attachments && m.attachments.length > 0))
+        .map(m => {
+          const parts: any[] = [];
+          if (m.content) parts.push({ text: m.content });
+          if (m.attachments) {
+            m.attachments.forEach(att => {
+              const base64Data = att.base64.includes(';base64,')
+                ? att.base64.split(';base64,')[1]
+                : att.base64;
+              parts.push({ inlineData: { mimeType: att.mimeType, data: base64Data } });
+            });
+          }
+          return { role: m.role === 'user' ? 'user' : 'model', parts };
+        });
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+          temperature: modeToUse === 'roast' ? 1.1 : modeToUse === 'focus' ? 0.6 : 0.85,
+        }
+      });
+
+      const responseText = result.text || "I processed your input but had no verbal response. Tell me more!";
+
       const amicaMsgId = "amica-" + Date.now();
       const newAmicaMessage: Message = {
         id: amicaMsgId,
         role: "model",
-        content: resData.content,
+        content: responseText,
         timestamp: new Date().toISOString(),
         mode: modeToUse
       };
 
       setMessages(prev => [...prev, newAmicaMessage]);
-      
-      // If server responds with a mode update or confirms the mode, sync local client mode
-      if (resData.mode && resData.mode !== currentMode) {
-        setCurrentMode(resData.mode);
-      }
 
     } catch (err: any) {
       console.error("Error communicating with AMICA brain:", err);
-      setApiError(err.message || "Failed to reach AMICA's cognitive engine. Please verify your Gemini API key in the AI Studio panel.");
+      const msg = err.message || '';
+      if (msg.includes('API_KEY') || msg.includes('API key') || msg.includes('401') || msg.includes('403')) {
+        setShowApiKeyModal(true);
+        setApiError('Invalid or missing Gemini API key. Please update it in settings.');
+      } else {
+        setApiError(msg || "Failed to reach AMICA's cognitive engine. Check your API key in settings.");
+      }
     } finally {
       setIsSending(false);
-      // Refocus input
       inputRef.current?.focus();
     }
   };
@@ -1426,6 +1475,83 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── API Key Modal ──────────────────────────────────── */}
+      {showApiKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-gray-900 border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-500/5 p-6 space-y-5">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-base text-gray-100">Gemini API Key Required</h2>
+                <p className="text-xs text-gray-400">Stored locally in your browser only</p>
+              </div>
+              <button onClick={() => setShowApiKeyModal(false)} className="ml-auto p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-400 leading-relaxed">
+              AMICA runs entirely in your browser. Enter your{' '}
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">
+                Google Gemini API key
+              </a>{' '}
+              to power the cognitive engine. It is never sent to any server.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 block uppercase tracking-wider">API Key</label>
+              <input
+                type="text"
+                value={apiKeyInput}
+                onChange={e => setApiKeyInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const key = apiKeyInput.trim();
+                    if (key) {
+                      localStorage.setItem('amica_gemini_key', key);
+                      setApiKey(key);
+                      setApiKeyInput('');
+                      setShowApiKeyModal(false);
+                      setApiError(null);
+                    }
+                  }
+                }}
+                placeholder="AIzaSy..."
+                autoFocus
+                spellCheck={false}
+                className="w-full bg-gray-950 border border-gray-800 focus:border-amber-500/40 rounded-xl px-3 py-2.5 text-sm text-gray-200 outline-none transition-colors font-mono"
+              />
+            </div>
+
+            <div className="flex space-x-2.5 pt-1">
+              <button
+                onClick={() => setShowApiKeyModal(false)}
+                className="flex-1 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const key = apiKeyInput.trim();
+                  if (key) {
+                    localStorage.setItem('amica_gemini_key', key);
+                    setApiKey(key);
+                    setApiKeyInput('');
+                    setShowApiKeyModal(false);
+                    setApiError(null);
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-sm transition-colors"
+              >
+                Save & Connect
+              </button>
+            </div>
           </div>
         </div>
       )}
