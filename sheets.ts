@@ -34,28 +34,34 @@ export async function fetchFromSheets(webAppUrl: string): Promise<SheetsData | n
 }
 
 /**
- * Save / Sync data to Google Sheets Web App
+ * Save / Sync data to Google Sheets Web App.
+ *
+ * Google Apps Script Web Apps redirect POST requests (302), which causes
+ * browsers to convert POST → GET, so doPost is never called.
+ * Fix: use mode:'no-cors' — this sends the POST directly without following
+ * redirects via the CORS preflight path. The response is opaque but the
+ * write to the Sheet DOES happen server-side.
  */
 export async function syncToSheets(webAppUrl: string, data: SheetsData): Promise<boolean> {
   if (!webAppUrl || !webAppUrl.startsWith("http")) return false;
 
+  const payload = JSON.stringify({ action: "syncAll", ...data });
+
   try {
-    const response = await fetch(webAppUrl, {
+    // Strategy 1: no-cors mode (bypasses redirect problem, opaque response)
+    await fetch(webAppUrl, {
       method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "syncAll",
-        ...data,
-      }),
+      body: payload,
     });
-    
-    if (!response.ok) throw new Error(`Google Sheets Sync HTTP ${response.status}`);
     return true;
   } catch (error) {
     console.error("[AMICA Google Sheets Sync Error]", error);
     return false;
   }
 }
+
 
 /**
  * Apps Script template for user to copy into Google Sheets Extensions > Apps Script

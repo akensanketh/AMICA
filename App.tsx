@@ -272,29 +272,42 @@ export default function App() {
     }
   }, [sheetsUrl]);
 
-  // Save changes to local storage & trigger Sheets sync
+  // ── localStorage persistence (instant, no network) ──────────────────────────
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0)
       localStorage.setItem("amica_messages", JSON.stringify(messages));
-      if (sheetsUrl) {
-        syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
-      }
-    }
   }, [messages]);
 
   useEffect(() => {
     localStorage.setItem("amica_student_tasks", JSON.stringify(studentTasks));
-    if (sheetsUrl) {
-      syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
-    }
   }, [studentTasks]);
 
   useEffect(() => {
     localStorage.setItem("amica_reminders", JSON.stringify(reminders));
-    if (sheetsUrl) {
-      syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
-    }
   }, [reminders]);
+
+  // ── Fully automated Google Sheets sync ───────────────────────────────────────
+  // Watches ALL data. Debounces 1.5 s so rapid changes (typing) don't spam the
+  // API. Uses latest values — no stale-closure problem.
+  useEffect(() => {
+    if (!sheetsUrl || messages.length === 0) return;
+
+    const timer = setTimeout(() => {
+      setSheetsSyncStatus("syncing");
+      syncToSheets(sheetsUrl, {
+        messages,
+        lore: friendLore,
+        tasks: studentTasks,
+        reminders,
+      }).then(ok => {
+        setSheetsSyncStatus(ok ? "synced" : "error");
+        // Reset back to idle after 3 s so the indicator doesn't stay green forever
+        if (ok) setTimeout(() => setSheetsSyncStatus("idle"), 3000);
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer); // cleanup previous timer on next change
+  }, [messages, friendLore, studentTasks, reminders, sheetsUrl]);
 
 
   // Study Timer Logic
@@ -809,18 +822,31 @@ Dynamic Information from State:
                 setTempSheetsUrl(sheetsUrl);
                 setShowSheetsModal(true);
               }}
-              className={`p-1.5 rounded-lg transition-colors flex items-center space-x-1.5 ${
-                sheetsUrl 
+              className={`p-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+                sheetsSyncStatus === "error"
+                  ? "text-rose-400 bg-rose-950/20 border border-rose-500/30"
+                  : sheetsSyncStatus === "syncing"
+                  ? "text-amber-400 bg-amber-950/20 border border-amber-500/30"
+                  : sheetsUrl 
                   ? "text-emerald-400 hover:bg-emerald-950/30 bg-emerald-950/20 border border-emerald-500/30" 
                   : "text-gray-400 hover:text-amber-400 hover:bg-gray-800"
               }`}
-              title={sheetsUrl ? "Google Sheets Online Backend Connected" : "Connect Google Sheets Backend"}
+              title={
+                sheetsSyncStatus === "syncing" ? "Syncing to Google Sheets…" :
+                sheetsSyncStatus === "synced"  ? "Google Sheets: Synced ✓" :
+                sheetsSyncStatus === "error"   ? "Google Sheets: Sync Error — click to reconfigure" :
+                sheetsUrl ? "Google Sheets Online Backend Connected" : "Connect Google Sheets Backend"
+              }
             >
               <Database className="w-4 h-4" />
               {sheetsSyncStatus === "syncing" && (
-                <RefreshCw className="w-3 h-3 text-amber-400 animate-spin" />
+                <RefreshCw className="w-3 h-3 animate-spin" />
+              )}
+              {sheetsSyncStatus === "synced" && (
+                <Check className="w-3 h-3 text-emerald-400" />
               )}
             </button>
+
             <button 
               onClick={() => setShowLoreModal(true)}
               className="p-1.5 rounded-lg text-gray-400 hover:text-amber-400 hover:bg-gray-800 transition-colors"
