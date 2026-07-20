@@ -1,11 +1,15 @@
 import { Message, FriendLore, TaskItem, ReminderItem } from "./types";
 
+export const DEFAULT_SHEETS_URL = "https://script.google.com/macros/s/AKfycbzpuhfywNR9PogZeIhPjuAAVWttXg7pNsAXowc5UE7TuBzPLZU6i8WtLvMLe2D9bL_Z/exec";
+
+
 export interface SheetsData {
   messages?: Message[];
   lore?: FriendLore;
   tasks?: TaskItem[];
   reminders?: ReminderItem[];
 }
+
 
 /**
  * Fetch all AMICA state from Google Sheets Web App

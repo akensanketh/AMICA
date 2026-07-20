@@ -40,7 +40,8 @@ import {
 } from "lucide-react";
 import { Message, OperationMode, FriendLore, Attachment, TaskItem, ReminderItem } from "./types";
 import { GoogleGenAI } from "@google/genai";
-import { fetchFromSheets, syncToSheets, APPS_SCRIPT_CODE } from "./sheets";
+import { fetchFromSheets, syncToSheets, APPS_SCRIPT_CODE, DEFAULT_SHEETS_URL } from "./sheets";
+
 
 
 // Dynamic quick questions/prompts based on selected mode
@@ -232,7 +233,8 @@ export default function App() {
   }, []);
 
   // Google Sheets Integration States
-  const [sheetsUrl, setSheetsUrl] = useState<string>(() => localStorage.getItem("amica_sheets_url") || "");
+  const [sheetsUrl, setSheetsUrl] = useState<string>(() => localStorage.getItem("amica_sheets_url") || DEFAULT_SHEETS_URL);
+
   const [showSheetsModal, setShowSheetsModal] = useState(false);
   const [sheetsSyncStatus, setSheetsSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
   const [copiedScript, setCopiedScript] = useState(false);
