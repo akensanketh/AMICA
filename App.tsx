@@ -30,10 +30,18 @@ import {
   CheckSquare,
   Square,
   Clock,
-  BookOpen
+  BookOpen,
+  Database,
+  Copy,
+  Bell,
+  Calendar,
+  ExternalLink,
+  RefreshCw
 } from "lucide-react";
-import { Message, OperationMode, FriendLore, Attachment } from "./types";
+import { Message, OperationMode, FriendLore, Attachment, TaskItem, ReminderItem } from "./types";
 import { GoogleGenAI } from "@google/genai";
+import { fetchFromSheets, syncToSheets, APPS_SCRIPT_CODE } from "./sheets";
+
 
 // Dynamic quick questions/prompts based on selected mode
 const MODE_PROMPTS: Record<OperationMode, string[]> = {
@@ -223,17 +231,69 @@ export default function App() {
     }
   }, []);
 
-  // Save changes to local storage
+  // Google Sheets Integration States
+  const [sheetsUrl, setSheetsUrl] = useState<string>(() => localStorage.getItem("amica_sheets_url") || "");
+  const [showSheetsModal, setShowSheetsModal] = useState(false);
+  const [sheetsSyncStatus, setSheetsSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [tempSheetsUrl, setTempSheetsUrl] = useState("");
+
+  // Reminders State
+  const [reminders, setReminders] = useState<ReminderItem[]>(() => {
+    const saved = localStorage.getItem("amica_reminders");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { id: "r1", title: "Complete drawing / painting draft", time: "Today at 6:00 PM", completed: false },
+      { id: "r2", title: "Review ALIEN STAGE lore notes", time: "Tomorrow at 8:00 PM", completed: false }
+    ];
+  });
+  const [newReminderTitle, setNewReminderTitle] = useState("");
+  const [newReminderTime, setNewReminderTime] = useState("");
+
+  // Initial load from Google Sheets if configured
+  useEffect(() => {
+    if (sheetsUrl) {
+      setSheetsSyncStatus("syncing");
+      fetchFromSheets(sheetsUrl).then(data => {
+        if (data) {
+          if (data.messages && data.messages.length > 0) setMessages(data.messages);
+          if (data.lore) setFriendLore(data.lore);
+          if (data.tasks) setStudentTasks(data.tasks);
+          if (data.reminders) setReminders(data.reminders);
+          setSheetsSyncStatus("synced");
+        } else {
+          setSheetsSyncStatus("error");
+        }
+      });
+    }
+  }, [sheetsUrl]);
+
+  // Save changes to local storage & trigger Sheets sync
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem("amica_messages", JSON.stringify(messages));
+      if (sheetsUrl) {
+        syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
+      }
     }
   }, [messages]);
 
-  // Save student tasks to local storage
   useEffect(() => {
     localStorage.setItem("amica_student_tasks", JSON.stringify(studentTasks));
+    if (sheetsUrl) {
+      syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
+    }
   }, [studentTasks]);
+
+  useEffect(() => {
+    localStorage.setItem("amica_reminders", JSON.stringify(reminders));
+    if (sheetsUrl) {
+      syncToSheets(sheetsUrl, { messages, lore: friendLore, tasks: studentTasks, reminders });
+    }
+  }, [reminders]);
+
 
   // Study Timer Logic
   useEffect(() => {
@@ -741,13 +801,33 @@ Dynamic Information from State:
               <p className="text-xs text-gray-500">Companion Ver 2.4.0</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowLoreModal(true)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-amber-400 hover:bg-gray-800 transition-colors"
-            title="Configure Friend Lore"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-1">
+            <button 
+              onClick={() => {
+                setTempSheetsUrl(sheetsUrl);
+                setShowSheetsModal(true);
+              }}
+              className={`p-1.5 rounded-lg transition-colors flex items-center space-x-1.5 ${
+                sheetsUrl 
+                  ? "text-emerald-400 hover:bg-emerald-950/30 bg-emerald-950/20 border border-emerald-500/30" 
+                  : "text-gray-400 hover:text-amber-400 hover:bg-gray-800"
+              }`}
+              title={sheetsUrl ? "Google Sheets Online Backend Connected" : "Connect Google Sheets Backend"}
+            >
+              <Database className="w-4 h-4" />
+              {sheetsSyncStatus === "syncing" && (
+                <RefreshCw className="w-3 h-3 text-amber-400 animate-spin" />
+              )}
+            </button>
+            <button 
+              onClick={() => setShowLoreModal(true)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-amber-400 hover:bg-gray-800 transition-colors"
+              title="Configure Friend Lore"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+
         </div>
 
         {/* Scrollable Center Section */}
@@ -932,6 +1012,111 @@ Dynamic Information from State:
               </div>
             ) : (
               <p className="text-[10px] text-gray-500 text-center py-1 font-mono">No active focus tasks</p>
+            )}
+          </div>
+
+          {/* Reminders & Schedule Widget */}
+          <div className="bg-gray-950/65 border border-gray-850/80 rounded-2xl p-3.5 space-y-2.5 shadow-md">
+            <div className="flex items-center justify-between text-gray-400">
+              <div className="flex items-center space-x-2">
+                <Bell className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[10px] uppercase tracking-widest font-bold font-sans">Reminders &amp; Schedule</span>
+              </div>
+              <span className="text-[9px] font-mono text-gray-500">
+                {reminders.filter(r => !r.completed).length} Pending
+              </span>
+            </div>
+
+            {/* Add Reminder Form */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newReminderTitle.trim()) return;
+                const newReminder: ReminderItem = {
+                  id: "r-" + Date.now(),
+                  title: newReminderTitle.trim(),
+                  time: newReminderTime.trim() || "Today",
+                  completed: false
+                };
+                setReminders([...reminders, newReminder]);
+                setNewReminderTitle("");
+                setNewReminderTime("");
+              }}
+              className="space-y-1.5"
+            >
+              <input
+                type="text"
+                value={newReminderTitle}
+                onChange={(e) => setNewReminderTitle(e.target.value)}
+                placeholder="Reminder title (e.g. Paint draft...)"
+                className="w-full bg-gray-900/45 border border-gray-800/80 text-xs px-2.5 py-1.5 rounded-xl text-gray-200 placeholder-gray-600 focus:outline-none focus:border-amber-500/40"
+              />
+              <div className="flex items-center space-x-1">
+                <input
+                  type="text"
+                  value={newReminderTime}
+                  onChange={(e) => setNewReminderTime(e.target.value)}
+                  placeholder="Time (e.g. 8:00 PM)"
+                  className="flex-1 bg-gray-900/45 border border-gray-800/80 text-[11px] px-2.5 py-1 rounded-xl text-gray-300 placeholder-gray-600 focus:outline-none focus:border-amber-500/40"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1 rounded-xl bg-amber-500 text-gray-950 font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer flex items-center space-x-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Set</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Reminders List */}
+            {reminders.length > 0 ? (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {reminders.map(rem => (
+                  <div 
+                    key={rem.id} 
+                    className="flex items-center justify-between bg-gray-900/10 hover:bg-gray-900/30 border border-gray-900/60 p-2 rounded-xl text-xs group transition-all"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReminders(reminders.map(r => r.id === rem.id ? { ...r, completed: !r.completed } : r));
+                      }}
+                      className="flex items-center space-x-2 text-left min-w-0 cursor-pointer flex-1"
+                    >
+                      {rem.completed ? (
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5 text-gray-600 hover:text-amber-500 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-[11px] leading-snug transition-all ${
+                          rem.completed ? "line-through text-gray-500" : "text-gray-200 font-medium"
+                        }`}>
+                          {rem.title}
+                        </p>
+                        {rem.time && (
+                          <p className="text-[9px] text-amber-500/80 font-mono">
+                            {rem.time}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReminders(reminders.filter(r => r.id !== rem.id));
+                      }}
+                      className="text-gray-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all p-0.5 shrink-0 cursor-pointer"
+                      title="Delete Reminder"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-500 text-center py-1 font-mono">No active reminders</p>
             )}
           </div>
 
@@ -1549,7 +1734,114 @@ Dynamic Information from State:
                 }}
                 className="flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-sm transition-colors"
               >
-                Save & Connect
+                Save &amp; Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Google Sheets Backend Modal ──────────────────────────────────── */}
+      {showSheetsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-xl bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-2xl shadow-emerald-500/10 p-6 space-y-5 my-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <Database className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-base text-gray-100">Google Sheets Online Backend</h2>
+                <p className="text-xs text-gray-400">Sync messages, reminders, lore &amp; tasks directly to Google Sheets</p>
+              </div>
+              <button onClick={() => setShowSheetsModal(false)} className="ml-auto p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Instructions */}
+            <div className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-3 text-xs text-gray-300">
+              <h3 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                <span>Setup Instructions (1-Minute ⚡)</span>
+              </h3>
+              <ol className="list-decimal list-inside space-y-1.5 leading-relaxed text-gray-400">
+                <li>Create a blank Google Sheet at <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline inline-flex items-center space-x-0.5"><span>sheets.new</span> <ExternalLink className="w-3 h-3 ml-0.5" /></a></li>
+                <li>Go to <strong>Extensions &gt; Apps Script</strong></li>
+                <li>Delete default code, paste the script below, and click <strong>Deploy &gt; New deployment</strong></li>
+                <li>Type: <strong>Web app</strong> | Execute as: <strong>Me</strong> | Access: <strong>Anyone</strong></li>
+                <li>Click <strong>Deploy</strong>, authorize permissions, and copy the Web App URL!</li>
+              </ol>
+
+              <div className="pt-2 flex items-center justify-between border-t border-gray-900">
+                <span className="text-[11px] font-mono text-gray-500">Apps Script Code Template</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+                    setCopiedScript(true);
+                    setTimeout(() => setCopiedScript(false), 3000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 font-bold text-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
+                >
+                  {copiedScript ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedScript ? "Script Copied!" : "Copy Apps Script Code"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Web App URL Input */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 block uppercase tracking-wider">
+                Google Sheets Web App URL
+              </label>
+              <input
+                type="text"
+                value={tempSheetsUrl}
+                onChange={e => setTempSheetsUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                spellCheck={false}
+                className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500/40 rounded-xl px-3 py-2.5 text-sm text-gray-200 outline-none transition-colors font-mono"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-2.5 pt-2">
+              {sheetsUrl && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("Disconnect Google Sheets backend? Data remains safe locally.")) {
+                      localStorage.removeItem("amica_sheets_url");
+                      setSheetsUrl("");
+                      setTempSheetsUrl("");
+                      setShowSheetsModal(false);
+                      setSheetsSyncStatus("idle");
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-950/40 border border-rose-900/60 hover:bg-rose-900/40 text-rose-400 text-xs font-bold transition-colors"
+                >
+                  Disconnect
+                </button>
+              )}
+              <button
+                onClick={() => setShowSheetsModal(false)}
+                className="flex-1 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const url = tempSheetsUrl.trim();
+                  if (url) {
+                    localStorage.setItem("amica_sheets_url", url);
+                    setSheetsUrl(url);
+                    setShowSheetsModal(false);
+                    setSheetsSyncStatus("syncing");
+                    const success = await syncToSheets(url, { messages, lore: friendLore, tasks: studentTasks, reminders });
+                    setSheetsSyncStatus(success ? "synced" : "error");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Database className="w-4 h-4" />
+                <span>Save &amp; Connect Backend</span>
               </button>
             </div>
           </div>
@@ -1558,3 +1850,4 @@ Dynamic Information from State:
     </div>
   );
 }
+

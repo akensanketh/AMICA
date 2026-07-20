@@ -22,3 +22,16 @@ export interface FriendLore {
   goals: string;
   customLore: string;
 }
+
+export interface TaskItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface ReminderItem {
+  id: string;
+  title: string;
+  time: string;
+  completed: boolean;
+}
