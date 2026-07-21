@@ -186,16 +186,6 @@ How is the creative or study life going today? Let's chat!`,
     mode: "default"
   };
 
-  function getApiKey() {
-    const saved = localStorage.getItem("amica_gemini_key");
-    if (saved && saved.trim()) return saved.trim();
-    try {
-      return atob("QVEuQWI4Uk42S000cTZmQnM2U21rUUt1SEVDWnFqcWZfZFBucWNpclBOck1EZks2akdoOEE=");
-    } catch (e) {
-      return "";
-    }
-  }
-
   // ── APPLICATION STATE ───────────────────────────────────────────────────
 
   let state = {
@@ -211,7 +201,7 @@ How is the creative or study life going today? Let's chat!`,
       { id: "r2", title: "Review ALIEN STAGE lore notes", time: "Tomorrow at 8:00 PM", completed: false }
     ],
     attachments: [],
-    apiKey: getApiKey(),
+    apiKey: localStorage.getItem("amica_gemini_key") || "",
     sheetsUrl: localStorage.getItem("amica_sheets_url") || DEFAULT_SHEETS_URL,
     sheetsStatus: "idle", // "idle" | "syncing" | "synced" | "error"
     isSending: false,
@@ -369,7 +359,7 @@ How is the creative or study life going today? Let's chat!`,
             state.apiKey = match[1].trim();
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     } catch (e) {
       console.error("[AMICA] Storage load error:", e);
       state.messages = [INITIAL_MESSAGE];
@@ -444,7 +434,7 @@ How is the creative or study life going today? Let's chat!`,
       const metaRow = document.createElement("div");
       metaRow.className = "message-meta-row";
       const parsedDate = msg.timestamp ? new Date(msg.timestamp) : new Date();
-      const timeStr = isNaN(parsedDate.getTime()) 
+      const timeStr = isNaN(parsedDate.getTime())
         ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       metaRow.innerHTML = `
@@ -704,9 +694,6 @@ How is the creative or study life going today? Let's chat!`,
     }
 
     // Check API Key
-    if (!state.apiKey) {
-      state.apiKey = getApiKey();
-    }
     if (!state.apiKey) {
       openApiKeyModal();
       return;
@@ -980,7 +967,7 @@ Dynamic Information from State:
 
     rec.onend = () => {
       if (state.voiceActive) {
-        setTimeout(() => { try { rec.start(); } catch (err) {} }, 300);
+        setTimeout(() => { try { rec.start(); } catch (err) { } }, 300);
       } else {
         state.voiceStatus = "inactive";
         updateVoiceUI("Voice disabled", false);
@@ -997,9 +984,9 @@ Dynamic Information from State:
     if (!state.recognition) return;
 
     if (active) {
-      try { state.recognition.start(); } catch (e) {}
+      try { state.recognition.start(); } catch (e) { }
     } else {
-      try { state.recognition.stop(); } catch (e) {}
+      try { state.recognition.stop(); } catch (e) { }
     }
   }
 
@@ -1344,7 +1331,7 @@ Dynamic Information from State:
   function closeLoreModal() { DOM.loreModal.classList.add("hidden"); }
 
   function openApiKeyModal() {
-    DOM.apiKeyInput.value = state.apiKey || getApiKey();
+    DOM.apiKeyInput.value = state.apiKey || "";
     DOM.apiKeyModal.classList.remove("hidden");
   }
   function closeApiKeyModal() { DOM.apiKeyModal.classList.add("hidden"); }
