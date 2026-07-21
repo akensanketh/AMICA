@@ -186,6 +186,16 @@ How is the creative or study life going today? Let's chat!`,
     mode: "default"
   };
 
+  function getApiKey() {
+    const saved = localStorage.getItem("amica_gemini_key");
+    if (saved && saved.trim()) return saved.trim();
+    try {
+      return atob("QVEuQWI4Uk42S000cTZmQnM2U21rUUt1SEVDWnFqcWZfZFBucWNpclBOck1EZks2akdoOEE=");
+    } catch (e) {
+      return "";
+    }
+  }
+
   // ── APPLICATION STATE ───────────────────────────────────────────────────
 
   let state = {
@@ -201,7 +211,7 @@ How is the creative or study life going today? Let's chat!`,
       { id: "r2", title: "Review ALIEN STAGE lore notes", time: "Tomorrow at 8:00 PM", completed: false }
     ],
     attachments: [],
-    apiKey: localStorage.getItem("amica_gemini_key") || (function() { try { return atob("QVEuQWI4Uk42S000cTZmQnM2U21rUUt1SEVDWnFqcWZfZFBucWNpclBOck1EZks2akdoOEE="); } catch(e) { return ""; } })(),
+    apiKey: getApiKey(),
     sheetsUrl: localStorage.getItem("amica_sheets_url") || DEFAULT_SHEETS_URL,
     sheetsStatus: "idle", // "idle" | "syncing" | "synced" | "error"
     isSending: false,
@@ -694,6 +704,9 @@ How is the creative or study life going today? Let's chat!`,
     }
 
     // Check API Key
+    if (!state.apiKey) {
+      state.apiKey = getApiKey();
+    }
     if (!state.apiKey) {
       openApiKeyModal();
       return;
@@ -1331,7 +1344,7 @@ Dynamic Information from State:
   function closeLoreModal() { DOM.loreModal.classList.add("hidden"); }
 
   function openApiKeyModal() {
-    DOM.apiKeyInput.value = state.apiKey || "";
+    DOM.apiKeyInput.value = state.apiKey || getApiKey();
     DOM.apiKeyModal.classList.remove("hidden");
   }
   function closeApiKeyModal() { DOM.apiKeyModal.classList.add("hidden"); }
