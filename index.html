@@ -424,43 +424,6 @@
     </div>
   </div>
 
-  <!-- Gemini API Key Modal -->
-  <div class="modal-backdrop hidden" id="apiKeyModal">
-    <div class="modal-card modal-sm">
-      <div class="modal-header">
-        <div class="modal-header-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="modal-header-icon amber">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <div>
-            <h3>Gemini API Key Required</h3>
-            <p>Stored locally in your browser only</p>
-          </div>
-        </div>
-        <button type="button" class="modal-close-btn" id="closeApiKeyModalBtn">&times;</button>
-      </div>
-
-      <div class="modal-body space-y">
-        <p class="modal-description-text">
-          AMICA runs directly in your browser. Enter your 
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="link-amber">Google Gemini API key</a>
-          to power the cognitive engine.
-        </p>
-
-        <div class="form-group">
-          <label for="apiKeyInput">Gemini API Key</label>
-          <input type="text" id="apiKeyInput" placeholder="AIzaSy..." spellcheck="false" class="font-mono">
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="cancelApiKeyBtn">Cancel</button>
-          <button type="button" class="btn-primary" id="saveApiKeyBtn">Save & Connect</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Google Sheets Integration Modal -->
   <div class="modal-backdrop hidden" id="sheetsModal">
     <div class="modal-card modal-md">
