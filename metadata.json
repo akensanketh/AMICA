@@ -1,6 +1,0 @@
-{
-  "name": "AMICA",
-  "description": "Autonomous Mind for Intelligent Companion Assistance - A highly advanced, personalized AI companion designed by Lead Engineer Aken Sanketh for Anuki.",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

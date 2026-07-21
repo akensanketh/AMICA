@@ -1,16 +1,526 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AMICA — Autonomous Mind for Intelligent Companion Assistance. A personalized AI companion designed by Aken Sanketh." />
-    <meta name="theme-color" content="#0b0f19" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <title>AMICA</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/main.tsx"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AMICA — Autonomous Mind for Intelligent Companion Assistance. A personalized AI companion designed by Aken Sanketh for Anuki.">
+  <meta name="theme-color" content="#0b0f19">
+  <title>AMICA — Autonomous Mind for Intelligent Companion Assistance</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+  <div class="app-container" id="appContainer">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-orb-wrapper">
+          <div class="brand-orb pulsing-ring" id="headerOrb">A</div>
+          <span class="online-indicator"></span>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1 class="brand-name">AMICA</h1>
+            <span class="version-tag">Ver 3.5 Web</span>
+          </div>
+          <p class="brand-subtitle">Autonomous Mind for Intelligent Companion Assistance</p>
+        </div>
+      </div>
 
+      <!-- Mode Selector Pills -->
+      <nav class="mode-selector" id="modeSelector" aria-label="Operation Modes">
+        <button class="mode-btn active" data-mode="default" title="Default Companion Mode">
+          <span class="mode-icon">✨</span> Companion
+        </button>
+        <button class="mode-btn" data-mode="vent" title="Active Listener Mode (/vent)">
+          <span class="mode-icon">💖</span> /vent
+        </button>
+        <button class="mode-btn" data-mode="brainstorm" title="Creative Partner Mode (/brainstorm)">
+          <span class="mode-icon">🧠</span> /brainstorm
+        </button>
+        <button class="mode-btn" data-mode="roast" title="Witty Banter Mode (/roast)">
+          <span class="mode-icon">🔥</span> /roast
+        </button>
+        <button class="mode-btn" data-mode="focus" title="Productivity Coach Mode (/focus)">
+          <span class="mode-icon">🎯</span> /focus
+        </button>
+      </nav>
+
+      <!-- Header Action Controls -->
+      <div class="header-right">
+        <button class="sheets-badge hidden" id="sheetsStatusBadge" title="Google Sheets Integration">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-text" id="statusText">Sheets API</span>
+        </button>
+        
+        <button class="icon-btn" id="loreModalBtn" title="Configure Friend Lore (Anuki Profile)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 14a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="apiKeyModalBtn" title="Gemini API Key Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn hidden" id="resetMemoryBtn" title="Clear Neural Link / Reset Conversation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn mobile-only" id="sidebarToggleBtn" title="Toggle Side Panel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <div class="main-body">
+      
+      <!-- Left Dashboard Panel -->
+      <aside class="sidebar-panel" id="sidebarPanel">
+        <div class="sidebar-inner">
+          
+          <!-- Holographic Visualizer Card -->
+          <div class="visualizer-card" id="visualizerCard">
+            <div class="visualizer-orb-container">
+              <div class="visualizer-halo" id="visualizerHalo"></div>
+              <div class="visualizer-orb" id="visualizerOrb">
+                <svg class="cpu-icon" id="cpuIcon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="2"/>
+                  <rect x="9" y="9" width="6" height="6"/>
+                  <line x1="9" y1="1" x2="9" y2="4"/>
+                  <line x1="15" y1="1" x2="15" y2="4"/>
+                  <line x1="9" y1="20" x2="9" y2="23"/>
+                  <line x1="15" y1="20" x2="15" y2="23"/>
+                  <line x1="20" y1="9" x2="23" y2="9"/>
+                  <line x1="20" y1="15" x2="23" y2="15"/>
+                  <line x1="1" y1="9" x2="4" y2="9"/>
+                  <line x1="1" y1="15" x2="4" y2="15"/>
+                </svg>
+                <div class="orbit-ring"></div>
+              </div>
+            </div>
+            <div class="visualizer-info">
+              <h3 class="visualizer-title" id="visualizerTitle">AMICA Companion Core</h3>
+              <p class="visualizer-desc" id="visualizerDesc">Tuned for genuine connection, conversation, and study support.</p>
+            </div>
+          </div>
+
+          <!-- Cozy Study Pomodoro Timer Widget -->
+          <div class="widget-card timer-widget">
+            <div class="widget-header">
+              <div class="widget-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Study Focus Timer</span>
+              </div>
+              <span class="timer-mode-badge focus" id="timerModeBadge">FOCUS</span>
+            </div>
+            <div class="timer-body">
+              <div class="timer-display" id="timerDisplay">25:00</div>
+              <div class="timer-controls">
+                <button type="button" class="btn-timer" id="timerToggleBtn" title="Start/Pause Timer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="timerIcon">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                </button>
+                <button type="button" class="btn-timer" id="timerResetBtn" title="Reset Timer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="1 4 1 10 7 10"/>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                  </svg>
+                </button>
+                <button type="button" class="btn-timer-switch" id="timerSwitchBtn">Switch</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tasks Checklist Widget -->
+          <div class="widget-card tasks-widget">
+            <div class="widget-header">
+              <div class="widget-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <span>Anuki's Focus Tasks</span>
+              </div>
+              <span class="widget-counter" id="taskCounter">0/0 Done</span>
+            </div>
+            <form id="taskForm" class="widget-input-row">
+              <input type="text" id="taskInput" placeholder="Add a study goal..." required>
+              <button type="submit" class="btn-add">+</button>
+            </form>
+            <div class="widget-list" id="tasksList">
+              <!-- Rendered via app.js -->
+            </div>
+          </div>
+
+          <!-- Reminders Widget -->
+          <div class="widget-card reminders-widget">
+            <div class="widget-header">
+              <div class="widget-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span>Reminders & Schedule</span>
+              </div>
+              <span class="widget-counter" id="reminderCounter">0 Pending</span>
+            </div>
+            <form id="reminderForm" class="widget-input-stack">
+              <input type="text" id="reminderTitleInput" placeholder="Reminder title..." required>
+              <div class="widget-input-row">
+                <input type="text" id="reminderTimeInput" placeholder="Time (e.g. 8:00 PM)">
+                <button type="submit" class="btn-add-sm">Set</button>
+              </div>
+            </form>
+            <div class="widget-list" id="remindersList">
+              <!-- Rendered via app.js -->
+            </div>
+          </div>
+
+          <!-- Hands-Free Speech Widget -->
+          <div class="widget-card speech-widget">
+            <div class="speech-header">
+              <div class="widget-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                </svg>
+                <span>Hands-Free Speech</span>
+              </div>
+              <label class="switch-toggle">
+                <input type="checkbox" id="voiceToggleCheckbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="speech-box" id="speechBox">
+              <div class="speech-row">
+                <span class="speech-label">Wake Phrase:</span>
+                <span class="speech-badge">"AMICA"</span>
+              </div>
+              <div class="speech-status-row" id="speechStatusRow">
+                <span class="status-indicator-dot" id="voiceDot"></span>
+                <span class="speech-status-text" id="voiceStatusText">Voice disabled</span>
+              </div>
+              <p class="speech-subtext" id="voiceSubtext">Toggle switch to activate hands-free listening via Web Speech API.</p>
+            </div>
+          </div>
+
+          <!-- Sidebar Footer -->
+          <div class="sidebar-footer">
+            <div class="user-info-row">
+              <span>User: <strong>Anuki</strong></span>
+              <span>Architect: <strong class="architect-tag">Aken S.</strong></span>
+            </div>
+            <div class="db-status-bar">
+              <span class="db-dot"></span>
+              <span>Cognitive database: Armed</span>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- Right Chat Workspace -->
+      <main class="chat-workspace">
+        
+        <!-- Active Link Status Header Bar -->
+        <div class="chat-status-bar">
+          <div class="status-bar-left">
+            <span class="status-label">Current Link Status:</span>
+            <div class="mode-pill-indicator" id="currentModePill">
+              <span class="mode-pulse-dot" id="modePulseDot"></span>
+              <span id="currentModeText">AMICA.DEFAULT</span>
+            </div>
+          </div>
+          <button type="button" class="text-btn-danger" id="quickResetBtn">
+            <span>Reset Memory</span>
+          </button>
+        </div>
+
+        <!-- API Error Banner (Hidden by default) -->
+        <div class="api-error-banner hidden" id="apiErrorBanner">
+          <svg class="error-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div class="error-content">
+            <strong>Cognitive Engine Interruption</strong>
+            <p id="apiErrorMessage">Check your Gemini API key or internet connection.</p>
+          </div>
+          <button type="button" class="error-close-btn" id="closeErrorBannerBtn">&times;</button>
+        </div>
+
+        <!-- Messages Stream -->
+        <div class="messages-container" id="messagesContainer">
+          <div class="messages-inner" id="messagesInner">
+            <!-- Messages populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Chat Input Container Area -->
+        <div class="input-container-area">
+          <div class="input-inner">
+            
+            <!-- Context Prompt Suggestions -->
+            <div class="prompt-suggestions-strip" id="promptSuggestionsStrip">
+              <!-- Prompt buttons generated dynamically based on active mode -->
+            </div>
+
+            <!-- Slash Commands Autocomplete Popup -->
+            <div class="commands-dropdown hidden" id="commandsDropdown">
+              <div class="commands-header">Select Cognitive Mode</div>
+              <div class="commands-list">
+                <button type="button" class="command-item" data-cmd="/default">
+                  <span class="cmd-name default">/default</span>
+                  <span class="cmd-desc">Conversational</span>
+                </button>
+                <button type="button" class="command-item" data-cmd="/vent">
+                  <span class="cmd-name vent">/vent</span>
+                  <span class="cmd-desc">Active Listener</span>
+                </button>
+                <button type="button" class="command-item" data-cmd="/brainstorm">
+                  <span class="cmd-name brainstorm">/brainstorm</span>
+                  <span class="cmd-desc">Creative Partner</span>
+                </button>
+                <button type="button" class="command-item" data-cmd="/roast">
+                  <span class="cmd-name roast">/roast</span>
+                  <span class="cmd-desc">Playful Banter</span>
+                </button>
+                <button type="button" class="command-item" data-cmd="/focus">
+                  <span class="cmd-name focus">/focus</span>
+                  <span class="cmd-desc">Direct Coach</span>
+                </button>
+                <button type="button" class="command-item divider" data-cmd="/diagnostics">
+                  <span class="cmd-name diagnostics">/diagnostics</span>
+                  <span class="cmd-desc">System Health Check</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Attachment Preview Bar -->
+            <div class="attachment-preview-strip hidden" id="attachmentPreviewStrip">
+              <!-- Thumbnail elements generated dynamically -->
+            </div>
+
+            <!-- Main Input Form Wrapper -->
+            <div class="input-box-wrapper" id="inputBoxWrapper">
+              <div class="input-controls-row">
+                
+                <!-- File upload button -->
+                <button type="button" class="input-action-btn" id="attachFileBtn" title="Attach image or file context">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </button>
+                <input type="file" id="fileInput" class="hidden" multiple accept="image/*,application/pdf,text/*">
+
+                <!-- Mic speech button -->
+                <button type="button" class="input-action-btn" id="micBtn" title="Mic Transcription / Hands-Free Voice">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="micSvgIcon">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+
+                <!-- Textarea -->
+                <textarea 
+                  id="chatInput" 
+                  class="chat-textarea" 
+                  placeholder="Type a message or '/' for cognitive modes..." 
+                  rows="1"
+                ></textarea>
+
+                <!-- Send Button -->
+                <button type="button" class="send-btn" id="sendBtn" title="Send message (Enter)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="input-footer-info">
+                <span class="info-tag">Interactive Command Mode active</span>
+                <span class="info-hint">Press Enter to send, Shift+Enter for newline</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Friend Lore Configuration Modal -->
+  <div class="modal-backdrop hidden" id="loreModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="modal-header-icon">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 14a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+          </svg>
+          <div>
+            <h3>Personalize Friend Lore</h3>
+            <p>Configure AMICA's native memory database for Anuki</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeLoreModalBtn">&times;</button>
+      </div>
+
+      <form id="loreForm" class="modal-body space-y">
+        <div class="form-group">
+          <label for="loreHobbies">Favorite Hobbies</label>
+          <input type="text" id="loreHobbies" placeholder="What does Anuki like to do?">
+        </div>
+
+        <div class="form-group">
+          <label for="loreInsideJokes">Shared Inside Jokes</label>
+          <input type="text" id="loreInsideJokes" placeholder="Teasing about late-night study, ALIEN STAGE, etc.">
+        </div>
+
+        <div class="form-group">
+          <label for="loreGoals">Current Major Goals</label>
+          <input type="text" id="loreGoals" placeholder="What is Anuki striving for right now?">
+        </div>
+
+        <div class="form-group">
+          <label for="loreCustom">Custom Memories & Background Lore</label>
+          <textarea id="loreCustom" rows="3" placeholder="Enter custom memories, relationship dynamics, background facts..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary-danger" id="restoreDefaultLoreBtn">Restore Defaults</button>
+          <button type="submit" class="btn-primary">Save Cognitive Base</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Gemini API Key Modal -->
+  <div class="modal-backdrop hidden" id="apiKeyModal">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <div class="modal-header-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="modal-header-icon amber">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <div>
+            <h3>Gemini API Key Required</h3>
+            <p>Stored locally in your browser only</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeApiKeyModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body space-y">
+        <p class="modal-description-text">
+          AMICA runs directly in your browser. Enter your 
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="link-amber">Google Gemini API key</a>
+          to power the cognitive engine.
+        </p>
+
+        <div class="form-group">
+          <label for="apiKeyInput">Gemini API Key</label>
+          <input type="text" id="apiKeyInput" placeholder="AIzaSy..." spellcheck="false" class="font-mono">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelApiKeyBtn">Cancel</button>
+          <button type="button" class="btn-primary" id="saveApiKeyBtn">Save & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Sheets Integration Modal -->
+  <div class="modal-backdrop hidden" id="sheetsModal">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <div class="modal-header-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="modal-header-icon emerald">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          <div>
+            <h3>Google Sheets Backend Sync</h3>
+            <p>Cloud persistence for messages, lore, tasks & reminders</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeSheetsModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body space-y">
+        <div class="instruction-box">
+          <h4 class="instruction-title">Quick Setup Guide (1 Minute ⚡)</h4>
+          <ol class="instruction-steps">
+            <li>Create a blank Google Sheet at <a href="https://sheets.new" target="_blank" rel="noopener" class="link-emerald">sheets.new</a></li>
+            <li>Click <strong>Extensions &gt; Apps Script</strong></li>
+            <li>Delete default code, paste the script below, and click <strong>Deploy &gt; New deployment</strong></li>
+            <li>Select <strong>Web app</strong> | Execute as: <strong>Me</strong> | Access: <strong>Anyone</strong></li>
+            <li>Click <strong>Deploy</strong>, authorize, and copy the Web App URL!</li>
+          </ol>
+          <div class="code-copy-row">
+            <span class="code-label">Apps Script Template Code</span>
+            <button type="button" class="btn-copy-code" id="copyAppsScriptBtn">Copy Apps Script Code</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="sheetsUrlInput">Google Sheets Web App URL</label>
+          <input type="url" id="sheetsUrlInput" placeholder="https://script.google.com/macros/s/.../exec" spellcheck="false" class="font-mono">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary-danger" id="disconnectSheetsBtn">Disconnect</button>
+          <button type="button" class="btn-secondary" id="cancelSheetsBtn">Cancel</button>
+          <button type="button" class="btn-emerald" id="saveSheetsBtn">Save & Sync Backend</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag-and-drop file overlay -->
+  <div class="drag-drop-overlay hidden" id="dragDropOverlay">
+    <div class="drag-drop-content">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="drag-icon">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+      </svg>
+      <h3>Drop file to upload context</h3>
+      <p>Supports images, photos of artwork, documents, and code</p>
+    </div>
+  </div>
+
+  <!-- Main JavaScript Bundle -->
+  <script src="app.js" defer></script>
+</body>
+</html>
